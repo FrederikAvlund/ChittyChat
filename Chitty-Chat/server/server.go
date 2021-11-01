@@ -99,6 +99,7 @@ func (s *Server) Broadcast(ctx context.Context, msg *pb.Message) (*pb.Close, err
 
 	wait := sync.WaitGroup{}
 	done := make(chan int)
+	s.local_timestamp = GetTimestamp(s, s.local_timestamp)
 
 	for _, conn := range s.Connection {
 		log.Println(conn.id)
@@ -112,6 +113,7 @@ func (s *Server) Broadcast(ctx context.Context, msg *pb.Message) (*pb.Close, err
 				//err:=error(nil)
 				//            log.Println("Sending message %v to user %w", msg.Id, conn.id)
 				fmt.Printf("Sending message: %v to user %v \n", msg.Message, conn.id)
+				s.local_timestamp++
 
 				if err != nil {
 					log.Fatalf("Error with stream %v. Error: %v", conn.stream, err)
@@ -127,14 +129,20 @@ func (s *Server) Broadcast(ctx context.Context, msg *pb.Message) (*pb.Close, err
 		close(done)
 	}()
 
+	//maybe timestamp++ here?
+
 	<-done
 
 	return &pb.Close{}, nil
 }
 
 func (s *Server) Publish(ctx context.Context, msg *pb.Message) (*pb.Close, error) {
+	incoming_timestamp, _ := strconv.Atoi(msg.GetTimestamp())
+	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
+
 	log.Println("Publish() from", msg.User.DisplayName, ":", msg.Message)
-	msg.Message = msg.User.DisplayName + ": " + msg.Message + " (Lamport time xxx)"
+	//msg.Message = msg.User.DisplayName + ": " + msg.Message + " (Lamport time xxx)"
+	fmt.Println(msg.User.DisplayName+": "+msg.Message+" (", s.local_timestamp, ")")
 
 	s.Broadcast(ctx, msg)
 	return &pb.Close{}, nil
@@ -142,7 +150,11 @@ func (s *Server) Publish(ctx context.Context, msg *pb.Message) (*pb.Close, error
 
 func (s *Server) Leave(ctx context.Context, msg *pb.Message) (*pb.Close, error) {
 	log.Println("Leave() from", msg.User.DisplayName, ":", msg.Message)
-	msg.Message = msg.User.DisplayName + ": Left Chitty-Chat (Lamport time xxx)"
+	incoming_timestamp, _ := strconv.Atoi(msg.GetTimestamp())
+	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
+
+	//msg.Message = msg.User.DisplayName + ": Left Chitty-Chat (Lamport time xxx)"
+	fmt.Println(msg.User.DisplayName+": Left Chitty-Chat"+" (", s.local_timestamp, ")")
 	s.Broadcast(ctx, msg)
 
 	for _, conn := range s.Connection {
