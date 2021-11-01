@@ -24,6 +24,9 @@ package main
 
 import (
 	"context"
+	"math"
+	"strconv"
+
 	//	"encoding/json"
 	//	"flag"
 	"fmt"
@@ -55,12 +58,23 @@ type Connection struct {
 type Server struct {
 	Connection []*Connection
 	pb.UnimplementedChittyChatServer
+	local_timestamp int64
+}
+
+func GetTimestamp(s *Server, i int64) int64 {
+	l := float64(s.local_timestamp)
+	i_ := float64(i)
+	f := math.Max(l, i_) + 1
+	return int64(f)
 }
 
 func (s *Server) Join(pconn *pb.Connect, stream pb.ChittyChat_JoinServer) error {
 
 	var msg pb.Message
 	var ctx context.Context
+	incoming_timestamp, _ := strconv.Atoi(msg.GetTimestamp())
+	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
+	fmt.Println("Event: Connect recieved: ", s.local_timestamp)
 	conn := &Connection{
 		stream: stream,
 		//      id: pconn.User.Id,
@@ -70,9 +84,11 @@ func (s *Server) Join(pconn *pb.Connect, stream pb.ChittyChat_JoinServer) error 
 	}
 	s.Connection = append(s.Connection, conn)
 	log.Println("Join of user", conn.id)
-	msg.Message = conn.id + " joined Chitty-Chat (Lamport time xxx)"
+	//msg.Message = conn.id + " joined Chitty-Chat (" + string(s.local_timestamp) + ")"
+	fmt.Println(conn.id+" joined Chitty-Chat (", s.local_timestamp, ")")
 	//	msg.User.DisplayName =  "???"
 	s.Broadcast(ctx, &msg)
+	s.local_timestamp++
 
 	return <-conn.err
 }
@@ -143,7 +159,7 @@ func main() {
 	var connections []*Connection
 	var ThisBroadcastServer pb.UnimplementedChittyChatServer
 
-	server := &Server{connections, ThisBroadcastServer}
+	server := &Server{connections, ThisBroadcastServer, 0}
 
 	grpcServer := grpc.NewServer()
 	listener, err := net.Listen("tcp", ":8080")
