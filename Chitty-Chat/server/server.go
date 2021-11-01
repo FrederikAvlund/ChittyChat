@@ -73,8 +73,6 @@ func (s *Server) Join(pconn *pb.Connect, stream pb.ChittyChat_JoinServer) error 
 	var msg pb.Message
 	var ctx context.Context
 	incoming_timestamp, _ := strconv.Atoi(msg.GetTimestamp())
-	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
-	fmt.Println("Event: Connect recieved: ", s.local_timestamp)
 	conn := &Connection{
 		stream: stream,
 		//      id: pconn.User.Id,
@@ -83,12 +81,13 @@ func (s *Server) Join(pconn *pb.Connect, stream pb.ChittyChat_JoinServer) error 
 		err:    make(chan error),
 	}
 	s.Connection = append(s.Connection, conn)
-	log.Println("Join of user", conn.id)
-	//msg.Message = conn.id + " joined Chitty-Chat (" + string(s.local_timestamp) + ")"
-	fmt.Println(conn.id+" joined Chitty-Chat (", s.local_timestamp, ")")
+	str := strconv.FormatInt(s.local_timestamp, 10)
+	//log.Println("Join of user", conn.id)
+	msg.Message = conn.id + " joined Chitty-Chat (" + str + ")"
+	log.Println(conn.id + " joined Chitty-Chat (Lamport time: " + str + ")")
+	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
 	//	msg.User.DisplayName =  "???"
 	s.Broadcast(ctx, &msg)
-	s.local_timestamp++
 
 	return <-conn.err
 }
@@ -99,21 +98,24 @@ func (s *Server) Broadcast(ctx context.Context, msg *pb.Message) (*pb.Close, err
 
 	wait := sync.WaitGroup{}
 	done := make(chan int)
-	s.local_timestamp = GetTimestamp(s, s.local_timestamp)
 
 	for _, conn := range s.Connection {
-		log.Println(conn.id)
+		//log.Println(conn.id)
 		wait.Add(1)
 
-		go func(msg *pb.Message, conn *Connection) {
+		func(msg *pb.Message, conn *Connection) { //go function before
 			defer wait.Done()
 
 			if conn.active {
+				//s.local_timestamp = GetTimestamp(s, s.local_timestamp)
+
+				//fmt.Printf("Server recieved message from %v (Lamport time: %v) \n", conn.id, s.local_timestamp)
 				err := conn.stream.Send(msg)
 				//err:=error(nil)
 				//            log.Println("Sending message %v to user %w", msg.Id, conn.id)
-				fmt.Printf("Sending message: %v to user %v \n", msg.Message, conn.id)
-				s.local_timestamp++
+				fmt.Printf("Sending message %v to user %v (Lamport time: %v) \n", msg.Message, conn.id, s.local_timestamp)
+				s.local_timestamp = GetTimestamp(s, s.local_timestamp)
+				//s.local_timestamp++
 
 				if err != nil {
 					log.Fatalf("Error with stream %v. Error: %v", conn.stream, err)
@@ -138,27 +140,32 @@ func (s *Server) Broadcast(ctx context.Context, msg *pb.Message) (*pb.Close, err
 
 func (s *Server) Publish(ctx context.Context, msg *pb.Message) (*pb.Close, error) {
 	incoming_timestamp, _ := strconv.Atoi(msg.GetTimestamp())
-	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
 
-	log.Println("Publish() from", msg.User.DisplayName, ":", msg.Message)
-	//msg.Message = msg.User.DisplayName + ": " + msg.Message + " (Lamport time xxx)"
-	fmt.Println(msg.User.DisplayName+": "+msg.Message+" (", s.local_timestamp, ")")
+	log.Println("Publish() from", msg.User.DisplayName, ":", msg.Message, "(Lamport time: ", s.local_timestamp, ")")
+
+	str := strconv.FormatInt(s.local_timestamp, 10)
+	msg.Message = msg.User.DisplayName + ": " + msg.Message + " (Lamport time: " + str + ")"
+
+	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
+	//fmt.Println("Timestamp: ", s.local_timestamp)
 
 	s.Broadcast(ctx, msg)
 	return &pb.Close{}, nil
 }
 
 func (s *Server) Leave(ctx context.Context, msg *pb.Message) (*pb.Close, error) {
-	log.Println("Leave() from", msg.User.DisplayName, ":", msg.Message)
+	//log.Println("Leave() from", msg.User.DisplayName, ":", msg.Message)
 	incoming_timestamp, _ := strconv.Atoi(msg.GetTimestamp())
-	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
 
-	//msg.Message = msg.User.DisplayName + ": Left Chitty-Chat (Lamport time xxx)"
-	fmt.Println(msg.User.DisplayName+": Left Chitty-Chat"+" (", s.local_timestamp, ")")
+	str := strconv.FormatInt(s.local_timestamp, 10)
+	msg.Message = msg.User.DisplayName + " left Chitty-Chat. (Lamport time: " + str + ")"
+
+	log.Println(msg.User.DisplayName+": Left Chitty-Chat"+" (", s.local_timestamp, ")")
+	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
 	s.Broadcast(ctx, msg)
 
 	for _, conn := range s.Connection {
-		log.Println("conn.id: " + conn.id + ", msg.User.DisplayName: " + msg.User.DisplayName)
+		//log.Println("conn.id: " + conn.id + ", msg.User.DisplayName: " + msg.User.DisplayName)
 		//Kan det logges uden at skrive i terminalen?
 		if conn.id == msg.User.DisplayName {
 			conn.active = false
