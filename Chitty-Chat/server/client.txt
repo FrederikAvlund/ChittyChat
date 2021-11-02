@@ -1,6 +1,1 @@
-2021/11/02 10:44:10 Starting server at port :8080
-2021/11/02 10:44:19 Frederik joined Chitty-Chat (Lamport time: 0)
-2021/11/02 10:44:20 Publish() from Frederik : Hej (Lamport time:  2 )
-2021/11/02 10:44:28 Joakim joined Chitty-Chat (Lamport time: 4)
-2021/11/02 10:44:32 Publish() from Joakim : Hej (Lamport time:  7 )
-2021/11/02 10:45:29 Frederik: Left Chitty-Chat ( 10 )
+2021/11/02 11:01:51 Starting server at port :8080

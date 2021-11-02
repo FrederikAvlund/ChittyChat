@@ -71,7 +71,7 @@ func GetTimestamp(s *Server, i int64) int64 {
 
 func logToFile() {
 	// If the file doesn't exist, create it or append to the file
-	file, err := os.OpenFile(fmt.Sprint("client.txt"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(fmt.Sprint("client.txt"), os.O_APPEND|os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -128,6 +128,7 @@ func (s *Server) Broadcast(ctx context.Context, msg *pb.Message) (*pb.Close, err
 				//err:=error(nil)
 				//            log.Println("Sending message %v to user %w", msg.Id, conn.id)
 				fmt.Printf("Sending message %v to user %v (Lamport time: %v) \n", msg.Message, conn.id, s.local_timestamp)
+				log.Println("Broadcasting message: ", msg.Message, " -- (Lamport time: ", s.local_timestamp, ")")
 				s.local_timestamp = GetTimestamp(s, s.local_timestamp)
 				//s.local_timestamp++
 
@@ -174,7 +175,7 @@ func (s *Server) Leave(ctx context.Context, msg *pb.Message) (*pb.Close, error) 
 	str := strconv.FormatInt(s.local_timestamp, 10)
 	msg.Message = msg.User.DisplayName + " left Chitty-Chat. (Lamport time: " + str + ")"
 
-	log.Println(msg.User.DisplayName+": Left Chitty-Chat"+" (", s.local_timestamp, ")")
+	log.Println(msg.User.DisplayName+" left Chitty-Chat"+" (Lamport time:", s.local_timestamp, ")")
 	s.local_timestamp = GetTimestamp(s, int64(incoming_timestamp))
 	s.Broadcast(ctx, msg)
 
