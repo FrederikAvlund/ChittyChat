@@ -25,6 +25,7 @@ package main
 import (
 	"context"
 	"math"
+	"os"
 	"strconv"
 
 	//	"encoding/json"
@@ -66,6 +67,19 @@ func GetTimestamp(s *Server, i int64) int64 {
 	i_ := float64(i)
 	f := math.Max(l, i_) + 1
 	return int64(f)
+}
+
+func logToFile() {
+	// If the file doesn't exist, create it or append to the file
+	file, err := os.OpenFile(fmt.Sprint("client.txt"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//if err := file.Close(); err != nil {
+	//	log.Fatal(err)
+	//}
+	log.SetOutput(file)
+
 }
 
 func (s *Server) Join(pconn *pb.Connect, stream pb.ChittyChat_JoinServer) error {
@@ -175,6 +189,7 @@ func (s *Server) Leave(ctx context.Context, msg *pb.Message) (*pb.Close, error) 
 }
 
 func main() {
+	logToFile()
 	var connections []*Connection
 	var ThisBroadcastServer pb.UnimplementedChittyChatServer
 
@@ -187,6 +202,7 @@ func main() {
 	}
 
 	log.Println("Starting server at port :8080")
+	fmt.Println("Starting server at port :8080")
 
 	pb.RegisterChittyChatServer(grpcServer, server)
 	grpcServer.Serve(listener)
