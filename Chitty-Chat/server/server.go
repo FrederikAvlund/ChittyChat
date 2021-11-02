@@ -117,7 +117,7 @@ func (s *Server) Broadcast(ctx context.Context, msg *pb.Message) (*pb.Close, err
 		//log.Println(conn.id)
 		wait.Add(1)
 
-		func(msg *pb.Message, conn *Connection) { //go function before
+		func(msg *pb.Message, conn *Connection) {
 			defer wait.Done()
 
 			if conn.active {
@@ -195,6 +195,7 @@ func main() {
 	var ThisBroadcastServer pb.UnimplementedChittyChatServer
 
 	server := &Server{connections, ThisBroadcastServer, 0}
+	server.local_timestamp++
 
 	grpcServer := grpc.NewServer()
 	listener, err := net.Listen("tcp", ":8080")

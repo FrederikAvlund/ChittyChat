@@ -1,6 +1,8 @@
 How to use Chitty Chat service
 
 
+	-- If the server makes
+
 	1)	Open a minimum of 4 different terminals at the folder Chitty-Chat.
 	2)	1 of these terminals has to locate to the server folder
 	3)	The rest has to locate to the client folder
